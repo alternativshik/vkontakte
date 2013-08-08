@@ -45,6 +45,16 @@ class VKError(Exception):
     def params(self):
         return self.error['request_params']
 
+    @property
+    def captcha(self):
+        data = None
+        if self.code == 14: # Capcha needed error
+            data = {
+                'sid': self.error['captcha_sid'],
+                'img': self.error['captcha_img'],
+            }
+        return data
+
     def __str__(self):
         return "Error(code = '%s', description = '%s', params = '%s')" % (self.code, self.description, self.params)
 
