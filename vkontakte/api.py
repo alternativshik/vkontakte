@@ -56,7 +56,7 @@ class VKError(Exception):
         return data
 
     def __str__(self):
-        return "Error(code = '%s', description = '%s', params = '%s')" % (self.code, self.description, self.params)
+        return "Error(code = '%s', description = '%s', params = '%s', captcha = '%s')" % (self.code, self.description, self.params, self.captcha)
 
 def _encode(s):
     if isinstance(s, (dict, list, tuple)):
