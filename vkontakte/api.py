@@ -23,7 +23,7 @@ REQUEST_ENCODING = 'utf8'
 COMPLEX_METHODS = ['secure', 'ads', 'messages', 'likes', 'friends',
     'groups', 'photos', 'wall', 'board', 'newsfeed', 'notifications', 'audio',
     'video', 'docs', 'places', 'storage', 'notes', 'pages',
-    'activity', 'offers', 'questions', 'subscriptions',
+    'activity', 'offers', 'questions', 'subscriptions', 'database',
     'users', 'status', 'polls', 'account', 'auth', 'stats']
 
 
