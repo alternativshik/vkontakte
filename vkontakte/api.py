@@ -55,8 +55,17 @@ class VKError(Exception):
             }
         return data
 
+    @property
+    def redirect_uri(self):
+        data = None
+        if self.code == 17: # Validation required
+            data = self.error['redirect_uri'],
+        return data
+
+
     def __str__(self):
-        return "Error(code = '%s', description = '%s', params = '%s', captcha = '%s')" % (self.code, self.description, self.params, self.captcha)
+        return "Error(code = '%s', description = '%s', params = '%s', captcha = '%s', redirect_uri = '%s')" % (self.code, self.description, self.params, self.captcha, self.redirect_uri)
+
 
 def _encode(s):
     if isinstance(s, (dict, list, tuple)):
