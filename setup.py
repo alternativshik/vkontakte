@@ -6,8 +6,8 @@ version='1.3.3'
 setup(
     name='vkontakte',
     version=version,
-    author='Mikhail Korobov', 'Serhii Maltsev'
-    author_email='kmike84@gmail.com', 'alternativshik@gmail.com'
+    author='Mikhail Korobov, Serhii Maltsev'
+    author_email='kmike84@gmail.com, alternativshik@gmail.com'
 
     packages=['vkontakte'],
 
