@@ -59,7 +59,7 @@ class VKError(Exception):
     def redirect_uri(self):
         data = None
         if self.code == 17: # Validation required
-            data = self.error['redirect_uri'],
+            data = self.error['redirect_uri']
         return data
 
 
