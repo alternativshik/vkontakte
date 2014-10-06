@@ -1,7 +1,6 @@
 # coding: utf-8
 import random
 import time
-import urllib
 import warnings
 from hashlib import md5
 from functools import partial
@@ -9,9 +8,10 @@ try:
     import simplejson as json
 except ImportError:
     import json
-from vkontakte import http
 
-API_URL = 'http://api.vk.com/api.php'
+import requests
+
+
 SECURE_API_URL = 'https://api.vk.com/method/'
 DEFAULT_TIMEOUT = 1
 REQUEST_ENCODING = 'utf8'
@@ -67,50 +67,30 @@ class VKError(Exception):
         return "Error(code = '%s', description = '%s', params = '%s', captcha = '%s', redirect_uri = '%s')" % (self.code, self.description, self.params, self.captcha, self.redirect_uri)
 
 
-def _encode(s):
-    if isinstance(s, (dict, list, tuple)):
-        s = json.dumps(s, ensure_ascii=False, encoding=REQUEST_ENCODING)
-
-    if isinstance(s, unicode):
-        s = s.encode(REQUEST_ENCODING)
-
-    return s # this can be number, etc.
-
 def _json_iterparse(response):
     response = response.strip()
-    decoder = json.JSONDecoder(encoding="utf8", strict=False)
+    decoder = json.JSONDecoder(strict=False)
     idx = 0
     while idx < len(response):
         obj, idx = decoder.raw_decode(response, idx)
         yield obj
 
-def signature(api_secret, params):
-    keys = sorted(params.keys())
-    param_str = "".join(["%s=%s" % (str(key), _encode(params[key])) for key in keys])
-    return md5(param_str + str(api_secret)).hexdigest()
-
-# We have to support this:
-#
-#   >>> vk = API(key, secret)
-#   >>> vk.get('getServerTime')  # "get" is a method of API class
-#   >>> vk.friends.get(uid=123)  # "get" is a part of vkontakte method name
-#
-# It works this way: API class has 'get' method but _API class doesn't.
 
 class _API(object):
-    def __init__(self, api_id=None, api_secret=None, token=None, **defaults):
+    def __init__(self, api_id=None, token=None, **defaults):
 
-        if not (api_id and api_secret or token):
-            raise ValueError("Arguments api_id and api_secret or token are required")
+        if not (api_id or token):
+            raise ValueError("Arguments api_id or token are required")
 
         self.api_id = api_id
-        self.api_secret = api_secret
         self.token = token
         self.defaults = defaults
         self.method_prefix = ''
 
     def _get(self, method, timeout=DEFAULT_TIMEOUT, **kwargs):
-        status, response = self._request(method, timeout=timeout, **kwargs)
+        response = self._request(method, timeout=timeout, **kwargs)
+        status = response.status_code
+
         if not (200 <= status <= 299):
             raise VKError({
                 'error_code': status,
@@ -120,7 +100,7 @@ class _API(object):
 
         # there may be a response after errors
         errors = []
-        for data in _json_iterparse(response):
+        for data in _json_iterparse(response.text):
             if "error" in data:
                 errors.append(data["error"])
             if "response" in data:
@@ -135,7 +115,7 @@ class _API(object):
         Support for api.<method>.<methodName> syntax
         '''
         if name in COMPLEX_METHODS:
-            api = _API(api_id=self.api_id, api_secret=self.api_secret, token=self.token, **self.defaults)
+            api = _API(api_id=self.api_id, token=self.token, **self.defaults)
             api.method_prefix = name + '.'
             return api
 
@@ -148,45 +128,19 @@ class _API(object):
         params.update(kwargs)
         return self._get(self.method_prefix + method, **params)
 
-    def _signature(self, params):
-        return signature(self.api_secret, params)
 
     def _request(self, method, timeout=DEFAULT_TIMEOUT, **kwargs):
-
-        for key, value in kwargs.iteritems():
-            kwargs[key] = _encode(value)
-
-        if self.token:
-            # http://vkontakte.ru/developers.php?oid=-1&p=Выполнение_запросов_к_API
-            params = dict(
-                access_token=self.token,
-            )
-            params.update(kwargs)
-            params['timestamp'] = int(time.time())
-            url = SECURE_API_URL + method
-            secure = True
-        else:
-            # http://vkontakte.ru/developers.php?oid=-1&p=Взаимодействие_приложения_с_API
-            params = dict(
-                api_id=str(self.api_id),
-                method=method,
-                format='JSON',
-                v='3.0',
-                random=random.randint(0, 2 ** 30),
-            )
-            params.update(kwargs)
-            params['timestamp'] = int(time.time())
-            params['sig'] = self._signature(params)
-            url = API_URL
-            secure = False
-        data = urllib.urlencode(params)
+        params = dict(
+            access_token=self.token,
+        )
+        params.update(kwargs)
+        params['timestamp'] = int(time.time())
+        url = SECURE_API_URL + method
 
         headers = {"Accept": "application/json",
                    "Content-Type": "application/x-www-form-urlencoded"}
 
-        # urllib2 doesn't support timeouts for python 2.5 so
-        # custom function is used for making http requests
-        return http.post(url, data, headers, timeout, secure=secure)
+        return requests.post(url, data=params, headers=headers, timeout=timeout)
 
 
 class API(_API):
